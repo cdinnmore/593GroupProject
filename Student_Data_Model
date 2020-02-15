@@ -75,8 +75,10 @@ student_all['por_grade_1'] = student_all['por_grade_1'].str.replace('"', '')
 
 student_all = student_all.astype(int)
 
-student_all['Increase_G3'] = student_all['G3']-student_all['G2']-student_all['G1']
-student_all['por_grade_3_increase']= student_all['por_grade_3']-student_all['por_grade_2']-student_all['por_grade_1']
+student_all['Increase_g1_to_g2_increase'] = student_all['G2']-student_all['G1']
+student_all['por_grade_1_to_2_increase'] = student_all['por_grade_2']-student_all['por_grade_1']
+student_all['q1_grade_diff'] = student_all['G1'] - student_all['por_grade_1']
+student_all['q2_grade_diff'] = student_all['G2'] - student_all['por_grade_2']
 
 G1 = student_all.drop(['G1', 'G2', 'por_grade_1', 'por_grade_2'], axis =1 )
 
@@ -90,9 +92,31 @@ student_test_scaled = mm_scaler.transform(student_test)
 student_train_scaled = pd.DataFrame(student_train_scaled, columns = student_train.columns )
 student_test_scaled = pd.DataFrame(student_test_scaled, columns = student_test.columns)
 
-x = student_train_scaled['por_grade_3_increase']
+x = student_train_scaled['por_grade_1_to_2_increase']
 y = student_train_scaled['por_grade_3']
 
 plt.scatter(x, y)
+plt.xlabel('increase')
+plt.ylabel('porgrade3')
 plt.show()
-print(student_train_scaled.head(10).to_string())
+
+x = student_train_scaled['Increase_g1_to_g2_increase']
+y = student_train_scaled['G3']
+
+plt.scatter(x, y)
+plt.xlabel('Increase')
+plt.ylabel('G3Math')
+plt.show()
+
+
+corr_matrix = student_train_scaled.corr()
+print(corr_matrix['G3'].sort_values(ascending=False))
+
+x = student_train_scaled['failures_0']
+y = student_train_scaled['G3']
+
+plt.scatter(x,y)
+plt.show()
+
+##correlation is not super helpful for where we have mostly binary values, we can still perform linear regression,
+##but at this point I am still leaning towards a boosted decision tree. 
