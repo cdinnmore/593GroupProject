@@ -1,0 +1,98 @@
+import pymssql
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn import preprocessing
+import matplotlib.pyplot as plt
+
+
+server = "teamdbserv1920.database.windows.net"
+database = "teamA6"
+user = "teamA6"
+pw = "Pwteam1A205@"
+
+conn = pymssql.connect(server, user, pw, database)
+
+cursor = conn.cursor(as_dict=True)
+cursor.execute("SELECT * FROM dbo.[merged_student_performance_data]")
+
+row = cursor.fetchall()
+
+
+for row in cursor:
+   print('row = %r' % (row,))
+conn.close()
+
+
+student_all=pd.DataFrame(row)
+
+### here we are turning all yes no into type binary, not using dummy variables so that we can just have singular columns.
+print(student_all['school'].value_counts())
+
+student_all['sex_binary'] = student_all['sex'].apply(lambda x: 1 if x == '"M"' else 0)
+student_all['address_binary'] = student_all['address'].apply(lambda x: 1 if x == '"R"' else 0)
+student_all['famsize_binary'] = student_all['famsize'].apply(lambda x: 1 if x == '"LE3"' else 0 )
+student_all['Pstatus_binary'] = student_all['Pstatus'].apply(lambda x: 1 if x == '"T"' else 0)
+student_all['schoolsup_binary'] = student_all['schoolsup'].apply(lambda x: 1 if x == '"yes"' else 0)
+student_all['famsup_binary'] = student_all['famsup'].apply(lambda x: 1 if x == '"yes"' else 0)
+student_all['paid_binary'] = student_all['paid'].apply(lambda x: 1 if x == '"yes"' else 0 )
+student_all['activities_binary'] = student_all['activities'].apply(lambda x: 1 if x== '"yes"' else 0)
+student_all['nursery_binary'] = student_all['nursery'].apply(lambda x: 1 if x == '"yes"' else 0)
+student_all['higher_binary'] = student_all['higher'].apply(lambda x: 1 if x == '"yes"' else 0)
+student_all['internet_binary'] = student_all['internet'].apply(lambda x: 1 if x == '"yes"' else 0)
+student_all['romantic'] = student_all['romantic'].apply(lambda x: 1 if x == '"yes"' else 0)
+student_all['school'] = student_all['school'].apply(lambda x: 1 if x == '"GP"' else 0)
+
+##we can turn into dummy data where there is more than one response which will give us multiple columns
+##you could do this instead of if else, just a matter of preference.
+dummy_prep = student_all[['Mjob', 'Fjob', 'reason', 'guardian', 'traveltime', 'studytime', 'failures']]
+
+dummy = pd.get_dummies(dummy_prep)
+
+##we can discard those columns that we created binary values for.
+drop_columns =['sex', 'address', 'famsize', 'Pstatus', 'schoolsup', 'famsup', 'paid', 'activities', 'nursery', 'higher', 'internet', 'romantic', 'Mjob', 'Fjob', 'reason', 'guardian','traveltime', 'studytime', 'failures']
+
+
+student_all.drop(drop_columns, inplace=True, axis = 1)
+
+for col in student_all.columns:
+    print(col)
+
+##then bring back the dummy data
+
+student_all = pd.concat([student_all, dummy], axis=1)
+
+##now we can look for NA values
+##just checking columns to make sure everything showed up correctly.
+
+
+student_all['G3'] = student_all['G3'].str.replace('"', '')
+student_all['G2'] = student_all['G2'].str.replace('"', '')
+student_all['G1'] = student_all['G1'].str.replace('"', '')
+student_all['por_grade_3'] = student_all['por_grade_3'].str.replace('"', '')
+student_all['por_grade_2'] = student_all['por_grade_2'].str.replace('"','')
+student_all['por_grade_1'] = student_all['por_grade_1'].str.replace('"', '')
+
+student_all = student_all.astype(int)
+
+student_all['Increase_G3'] = student_all['G3']-student_all['G2']-student_all['G1']
+student_all['por_grade_3_increase']= student_all['por_grade_3']-student_all['por_grade_2']-student_all['por_grade_1']
+
+G1 = student_all.drop(['G1', 'G2', 'por_grade_1', 'por_grade_2'], axis =1 )
+
+student_train, student_test = train_test_split(G1, test_size = 0.2)
+
+mm_scaler = preprocessing.MinMaxScaler()
+
+student_train_scaled = mm_scaler.fit_transform(student_train)
+student_test_scaled = mm_scaler.transform(student_test)
+
+student_train_scaled = pd.DataFrame(student_train_scaled, columns = student_train.columns )
+student_test_scaled = pd.DataFrame(student_test_scaled, columns = student_test.columns)
+
+x = student_train_scaled['por_grade_3_increase']
+y = student_train_scaled['por_grade_3']
+
+plt.scatter(x, y)
+plt.show()
+print(student_train_scaled.head(10).to_string())
